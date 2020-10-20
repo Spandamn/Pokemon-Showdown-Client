@@ -10,6 +10,8 @@ type BattleDesc = {
 	minElo?: number | string,
 	p1?: string,
 	p2?: string,
+	p3?: string,
+	p4?: string,
 };
 
 class BattlesRoom extends PSRoom {
@@ -44,10 +46,12 @@ class BattlesPanel extends PSRoomPanel<BattlesRoom> {
 	renderBattleLink(battle: BattleDesc) {
 		const format = battle.id.split('-')[1];
 		const minEloMessage = typeof battle.minElo === 'number' ? `rated ${battle.minElo}` : battle.minElo;
+		const p1 = battle.p1 + (battle.p3 ? " & " + battle.p3 : "");
+		const p2 = battle.p2 + (battle.p4 ? " & " + battle.p4 : "");
 		return <div><a href={`/${battle.id}`} class="blocklink">
 			{minEloMessage && <small style="float:right">({minEloMessage})</small>}
 			<small>[{format}]</small><br />
-			<em class="p1">{battle.p1}</em> <small class="vs">vs.</small> <em class="p2">{battle.p2}</em>
+			<em class="p1">{p1}</em> <small class="vs">vs.</small> <em class="p2">{p2}</em>
 		</a></div>;
 	}
 	render() {
@@ -257,11 +261,11 @@ class BattlePanel extends PSRoomPanel<BattleRoom> {
 	};
 	componentDidMount() {
 		const $elem = $(this.base!);
-		const battle = new Battle($elem.find('.battle'), $elem.find('.battle-log'));
+		const battle = new Battle($elem.find<HTMLElement>('.battle'), $elem.find<HTMLElement>('.battle-log'));
 		this.props.room.battle = battle;
 		battle.endCallback = () => this.forceUpdate();
 		battle.play();
-		(battle.scene as BattleScene).tooltips.listen($elem.find('.battle-controls'));
+		(battle.scene as BattleScene).tooltips.listen($elem.find<HTMLElement>('.battle-controls'));
 		super.componentDidMount();
 	}
 	receiveLine(args: Args) {

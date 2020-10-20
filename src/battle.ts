@@ -578,7 +578,9 @@ class Side {
 	name = '';
 	id = '';
 	n: number;
-	foe: Side = null!;
+	foe: Teams | Side = null!;
+	ally: Side | null = null!;
+	team: Teams = null!;
 	avatar: string = 'unknown';
 	rating: string = '';
 	totalPokemon = 6;
@@ -593,12 +595,10 @@ class Side {
 	lastPokemon = null as Pokemon | null;
 	pokemon = [] as Pokemon[];
 
-	/** [effectName, levels, minDuration, maxDuration] */
-	sideConditions: {[id: string]: [string, number, number, number]} = {};
-
 	constructor(battle: Battle, n: number) {
 		this.battle = battle;
 		this.n = n;
+		this.team = battle.sides[n];
 		this.updateSprites();
 	}
 
@@ -629,7 +629,7 @@ class Side {
 	reset() {
 		this.clearPokemon();
 		this.updateSprites();
-		this.sideConditions = {};
+		this.team.sideConditions = {};
 	}
 	updateSprites() {
 		this.z = (this.n ? 200 : 0);
@@ -648,62 +648,6 @@ class Side {
 			if (this.foe && this.avatar === this.foe.avatar) this.rollTrainerSprites();
 		}
 		if (this.battle.stagnateCallback) this.battle.stagnateCallback(this.battle);
-	}
-	addSideCondition(effect: Effect) {
-		let condition = effect.id;
-		if (this.sideConditions[condition]) {
-			if (condition === 'spikes' || condition === 'toxicspikes') {
-				this.sideConditions[condition][1]++;
-			}
-			this.battle.scene.addSideCondition(this.n, condition);
-			return;
-		}
-		// Side conditions work as: [effectName, levels, minDuration, maxDuration]
-		switch (condition) {
-		case 'auroraveil':
-			this.sideConditions[condition] = [effect.name, 1, 5, 8];
-			break;
-		case 'reflect':
-			this.sideConditions[condition] = [effect.name, 1, 5, this.battle.gen >= 4 ? 8 : 0];
-			break;
-		case 'safeguard':
-			this.sideConditions[condition] = [effect.name, 1, 5, 0];
-			break;
-		case 'lightscreen':
-			this.sideConditions[condition] = [effect.name, 1, 5, this.battle.gen >= 4 ? 8 : 0];
-			break;
-		case 'mist':
-			this.sideConditions[condition] = [effect.name, 1, 5, 0];
-			break;
-		case 'tailwind':
-			this.sideConditions[condition] = [effect.name, 1, this.battle.gen >= 5 ? 4 : 3, 0];
-			break;
-		case 'luckychant':
-			this.sideConditions[condition] = [effect.name, 1, 5, 0];
-			break;
-		case 'stealthrock':
-			this.sideConditions[condition] = [effect.name, 1, 0, 0];
-			break;
-		case 'spikes':
-			this.sideConditions[condition] = [effect.name, 1, 0, 0];
-			break;
-		case 'toxicspikes':
-			this.sideConditions[condition] = [effect.name, 1, 0, 0];
-			break;
-		case 'stickyweb':
-			this.sideConditions[condition] = [effect.name, 1, 0, 0];
-			break;
-		default:
-			this.sideConditions[condition] = [effect.name, 1, 0, 0];
-			break;
-		}
-		this.battle.scene.addSideCondition(this.n, condition);
-	}
-	removeSideCondition(condition: string) {
-		const id = toID(condition);
-		if (!this.sideConditions[id]) return;
-		delete this.sideConditions[id];
-		this.battle.scene.removeSideCondition(this.n, id);
 	}
 	addPokemon(name: string, ident: string, details: string, replaceSlot = -1) {
 		const oldItem = replaceSlot >= 0 ? this.pokemon[replaceSlot].item : undefined;
@@ -922,6 +866,143 @@ class Side {
 	}
 }
 
+class Teams {
+	battle: Battle;
+	name = '';
+	id = '';
+	n: number;
+	foe: Teams = null!;
+	players: Side[] | null = null;
+	avatar: string = 'unknown';
+	rating: string = '';
+	totalPokemon = 6;
+	x = 0;
+	y = 0;
+	z = 0;
+
+	active = [null] as (Pokemon | null)[];
+	lastPokemon = null as Pokemon | null;
+	pokemon = [] as Pokemon[];
+	missedPokemon: Pokemon = null!;
+
+	/** [effectName, levels, minDuration, maxDuration] */
+	sideConditions: {[id: string]: [string, number, number, number]} = {};
+
+	constructor(battle: Battle, n: number, sideChange?: boolean) {
+		this.battle = battle;
+		this.n = sideChange ? n ^ 1 : n;
+		this.players = n === 0 ? [battle.p1] : [battle.p2];
+		if (battle.gameType === 'multi') {
+			this.players.push(n === 0 ? battle.p3 : battle.p4);
+		}
+	}
+
+	rollTrainerSprites() {
+		let sprites = ['lucas', 'dawn', 'ethan', 'lyra', 'hilbert', 'hilda'];
+		this.avatar = sprites[Math.floor(Math.random() * sprites.length)];
+	}
+
+	behindx(offset: number) {
+		return this.x + (!this.n ? -1 : 1) * offset;
+	}
+	behindy(offset: number) {
+		return this.y + (!this.n ? 1 : -1) * offset;
+	}
+	leftof(offset: number) {
+		return (!this.n ? -1 : 1) * offset;
+	}
+	behind(offset: number) {
+		return this.z + (!this.n ? -1 : 1) * offset;
+	}
+
+	reset() {
+		this.sideConditions = {};
+	}
+	setAvatar(avatar: string) {
+		this.avatar = avatar;
+	}
+	setName(name: string, avatar?: string) {
+		if (name) this.name = name;
+		if (this.battle.gameType === 'multi' && this.players) {
+			this.name = `${this.players[0].name} & ${this.players[1].name}`;
+		}
+		this.id = toID(this.name);
+		if (avatar) {
+			this.setAvatar(avatar);
+		} else {
+			this.rollTrainerSprites();
+			if (this.foe && this.avatar === this.foe.avatar) this.rollTrainerSprites();
+		}
+		if (this.battle.stagnateCallback) this.battle.stagnateCallback(this.battle);
+	}
+	addSideCondition(effect: Effect) {
+		let condition = effect.id;
+		if (this.sideConditions[condition]) {
+			if (condition === 'spikes' || condition === 'toxicspikes') {
+				this.sideConditions[condition][1]++;
+			}
+			this.battle.scene.addSideCondition(this.n, condition);
+			return;
+		}
+		// Side conditions work as: [effectName, levels, minDuration, maxDuration]
+		switch (condition) {
+		case 'auroraveil':
+			this.sideConditions[condition] = [effect.name, 1, 5, 8];
+			break;
+		case 'reflect':
+			this.sideConditions[condition] = [effect.name, 1, 5, this.battle.gen >= 4 ? 8 : 0];
+			break;
+		case 'safeguard':
+			this.sideConditions[condition] = [effect.name, 1, 5, 0];
+			break;
+		case 'lightscreen':
+			this.sideConditions[condition] = [effect.name, 1, 5, this.battle.gen >= 4 ? 8 : 0];
+			break;
+		case 'mist':
+			this.sideConditions[condition] = [effect.name, 1, 5, 0];
+			break;
+		case 'tailwind':
+			this.sideConditions[condition] = [effect.name, 1, this.battle.gen >= 5 ? 4 : 3, 0];
+			break;
+		case 'luckychant':
+			this.sideConditions[condition] = [effect.name, 1, 5, 0];
+			break;
+		case 'stealthrock':
+			this.sideConditions[condition] = [effect.name, 1, 0, 0];
+			break;
+		case 'spikes':
+			this.sideConditions[condition] = [effect.name, 1, 0, 0];
+			break;
+		case 'toxicspikes':
+			this.sideConditions[condition] = [effect.name, 1, 0, 0];
+			break;
+		case 'stickyweb':
+			this.sideConditions[condition] = [effect.name, 1, 0, 0];
+			break;
+		default:
+			this.sideConditions[condition] = [effect.name, 1, 0, 0];
+			break;
+		}
+		this.battle.scene.addSideCondition(this.n, condition);
+	}
+	removeSideCondition(condition: string) {
+		const id = toID(condition);
+		if (!this.sideConditions[id]) return;
+		delete this.sideConditions[id];
+		this.battle.scene.removeSideCondition(this.n, id);
+	}
+
+	updateActives() {
+		if (!this.players) return;
+		this.active = [this.players[0].active[0], this.players[1].active[0]];
+	}
+
+	destroy() {
+		this.battle = null!;
+		this.foe = null!;
+	}
+}
+
 enum Playback {
 	/**
 	 * Battle is at the end of the queue. `|start` is not in the queue.
@@ -1046,12 +1127,15 @@ class Battle {
 	pseudoWeather = [] as WeatherState[];
 	weatherTimeLeft = 0;
 	weatherMinTimeLeft = 0;
-	mySide: Side = null!;
-	yourSide: Side = null!;
+	mySide: Teams = null!;
+	yourSide: Teams = null!;
 	p1: Side = null!;
 	p2: Side = null!;
+	p3: Side | null = null;
+	p4: Side | null = null;
 	myPokemon: ServerPokemon[] | null = null;
-	sides: [Side, Side] = [null!, null!];
+	sides: [Teams, Teams] = [null!, null!];
+	players: Side[] = null!;
 	lastMove = '';
 
 	gen = 7;
@@ -1059,7 +1143,7 @@ class Battle {
 	teamPreviewCount = 0;
 	speciesClause = false;
 	tier = '';
-	gameType: 'singles' | 'doubles' | 'triples' = 'singles';
+	gameType: 'singles' | 'doubles' | 'triples' | 'multi' | 'freeforfall' = 'singles';
 	rated: string | boolean = false;
 	isBlitz = false;
 	endLastTurnPending = false;
@@ -1126,13 +1210,23 @@ class Battle {
 		return false;
 	}
 	init() {
-		this.mySide = new Side(this, 0);
-		this.yourSide = new Side(this, 1);
+		this.p1 = new Side(this, 0);
+		this.p2 = new Side(this, 1);
+		this.players = [this.p1, this.p2];
+		if (this.gameType === 'multi') {
+			this.p3 = new Side(this, 2);
+			this.p4 = new Side(this, 3);
+			this.players.push(this.p3, this.p4);
+			this.p3.foe = this.p2;
+			this.p3.ally = this.p1;
+			this.p4.ally = this.p2;
+			this.p4.foe = this.p1;
+		}
+		this.mySide = new Teams(this, 0);
+		this.yourSide = new Teams(this, 1);
 		this.mySide.foe = this.yourSide;
 		this.yourSide.foe = this.mySide;
 		this.sides = [this.mySide, this.yourSide];
-		this.p1 = this.mySide;
-		this.p2 = this.yourSide;
 		this.gen = 7;
 		this.reset();
 	}
@@ -1209,11 +1303,11 @@ class Battle {
 	setSidesSwitched(sidesSwitched: boolean) {
 		this.sidesSwitched = sidesSwitched;
 		if (this.sidesSwitched) {
-			this.mySide = this.p2;
-			this.yourSide = this.p1;
+			this.mySide = new Teams(this, 1, true);
+			this.yourSide = new Teams(this, 0, true);
 		} else {
-			this.mySide = this.p1;
-			this.yourSide = this.p2;
+			this.mySide = this.p1.team;
+			this.yourSide = this.p2.team;
 		}
 		this.sides[0] = this.mySide;
 		this.sides[1] = this.yourSide;
@@ -2651,8 +2745,8 @@ class Battle {
 				this.scene.resultAnim(poke, 'Team Cured', 'good');
 				break;
 			case 'brickbreak':
-				target!.side.removeSideCondition('Reflect');
-				target!.side.removeSideCondition('LightScreen');
+				target!.side.team.removeSideCondition('Reflect');
+				target!.side.team.removeSideCondition('LightScreen');
 				break;
 			case 'hyperspacefury':
 			case 'hyperspacehole':
@@ -2740,7 +2834,7 @@ class Battle {
 		case '-sidestart': {
 			let side = this.getSide(args[1]);
 			let effect = Dex.getEffect(args[2]);
-			side.addSideCondition(effect);
+			side.team.addSideCondition(effect);
 
 			switch (effect.id) {
 			case 'tailwind':
@@ -2760,7 +2854,7 @@ class Battle {
 			let effect = Dex.getEffect(args[2]);
 			// let from = Dex.getEffect(kwArgs.from);
 			// let ofpoke = this.getPokemon(kwArgs.of);
-			side.removeSideCondition(effect.name);
+			side.team.removeSideCondition(effect.name);
 			this.log(args, kwArgs);
 			break;
 		}
@@ -2976,14 +3070,14 @@ class Battle {
 		pokemonid = parsedPokemonid;
 
 		const searchid = `${pokemonid}|${details}`;
-		const side = this.sides[siden];
+		const side = this.players[siden];
 
 		// search inactive revealed pokemon
 		for (let i = 0; i < side.pokemon.length; i++) {
 			let pokemon = side.pokemon[i];
 			if (pokemon.fainted) continue;
 			// already active, can't be switching in
-			if (side.active.includes(pokemon)) continue;
+			if (side.active.includes(pokemon) && !side.ally) continue;
 			// just switched out, can't be switching in
 			if (pokemon === side.lastPokemon && !side.active[slot]) continue;
 
@@ -3008,7 +3102,7 @@ class Battle {
 	rememberTeamPreviewPokemon(sideid: string, details: string) {
 		const {siden} = this.parsePokemonId(sideid);
 
-		return this.sides[siden].addPokemon('', '', details);
+		return this.players[siden].addPokemon('', '', details);
 	}
 	findCorrespondingPokemon(serverPokemon: {ident: string, details: string}) {
 		const {siden} = this.parsePokemonId(serverPokemon.ident);
@@ -3047,10 +3141,13 @@ class Battle {
 	getSide(sidename: string): Side {
 		if (sidename === 'p1' || sidename.substr(0, 3) === 'p1:') return this.p1;
 		if (sidename === 'p2' || sidename.substr(0, 3) === 'p2:') return this.p2;
-		if (this.mySide.id === sidename) return this.mySide;
-		if (this.yourSide.id === sidename) return this.yourSide;
-		if (this.mySide.name === sidename) return this.mySide;
-		if (this.yourSide.name === sidename) return this.yourSide;
+		if (sidename === 'p3' || sidename.substr(0, 3) === 'p3:') return this.p3;
+		if (sidename === 'p4' || sidename.substr(0, 3) === 'p4:') return this.p4;
+		let side: Side = this.p1;
+		this.players.forEach(player => {
+			if (player.id === sidename || player.name === sidename) side = player;
+		});
+		return side;
 		return {
 			name: sidename,
 			id: sidename.replace(/ /g, ''),
@@ -3125,6 +3222,7 @@ class Battle {
 				this.yourSide.active = [null];
 				break;
 			case 'doubles':
+			case 'multi':
 				this.mySide.active = [null, null];
 				this.yourSide.active = [null, null];
 				break;
@@ -3364,6 +3462,8 @@ class Battle {
 			this.log(args, kwArgs, preempt);
 			break;
 		}}
+		this.sides[0].updateActives();
+		this.sides[1].updateActives();
 	}
 
 	run(str: string, preempt?: boolean) {
