@@ -598,7 +598,6 @@ class Side {
 	constructor(battle: Battle, n: number) {
 		this.battle = battle;
 		this.n = n;
-		this.team = battle.sides[n];
 		this.updateSprites();
 	}
 
@@ -895,6 +894,9 @@ class Teams {
 		if (battle.gameType === 'multi') {
 			this.players.push(n === 0 ? battle.p3 : battle.p4);
 		}
+		this.players.forEach(player => {
+			player.team = this;
+		}, this);
 	}
 
 	rollTrainerSprites() {
@@ -1131,11 +1133,11 @@ class Battle {
 	yourSide: Teams = null!;
 	p1: Side = null!;
 	p2: Side = null!;
-	p3: Side | null = null;
-	p4: Side | null = null;
+	p3: Side | null = null!;
+	p4: Side | null = null!;
 	myPokemon: ServerPokemon[] | null = null;
-	sides: [Teams, Teams] = [null!, null!];
-	players: Side[] = null!;
+	teams: [Teams, Teams] = [null!, null!];
+	sides: Side[] = null!;
 	lastMove = '';
 
 	gen = 7;
@@ -1212,11 +1214,11 @@ class Battle {
 	init() {
 		this.p1 = new Side(this, 0);
 		this.p2 = new Side(this, 1);
-		this.players = [this.p1, this.p2];
+		this.sides = [this.p1, this.p2];
 		if (this.gameType === 'multi') {
 			this.p3 = new Side(this, 2);
 			this.p4 = new Side(this, 3);
-			this.players.push(this.p3, this.p4);
+			this.sides.push(this.p3, this.p4);
 			this.p3.foe = this.p2;
 			this.p3.ally = this.p1;
 			this.p4.ally = this.p2;
@@ -1226,7 +1228,7 @@ class Battle {
 		this.yourSide = new Teams(this, 1);
 		this.mySide.foe = this.yourSide;
 		this.yourSide.foe = this.mySide;
-		this.sides = [this.mySide, this.yourSide];
+		this.teams = [this.mySide, this.yourSide];
 		this.gen = 7;
 		this.reset();
 	}
@@ -1309,10 +1311,10 @@ class Battle {
 			this.mySide = this.p1.team;
 			this.yourSide = this.p2.team;
 		}
-		this.sides[0] = this.mySide;
-		this.sides[1] = this.yourSide;
-		this.sides[0].n = 0;
-		this.sides[1].n = 1;
+		this.teams[0] = this.mySide;
+		this.teams[1] = this.yourSide;
+		this.teams[0].n = 0;
+		this.teams[1].n = 1;
 
 		// nothing else should need updating - don't call this function after sending out pokemon
 	}
@@ -1410,7 +1412,7 @@ class Battle {
 			if (pWeather[1]) pWeather[1]--;
 			if (pWeather[2]) pWeather[2]--;
 		}
-		for (const side of this.sides) {
+		for (const side of this.teams) {
 			for (const id in side.sideConditions) {
 				let cond = side.sideConditions[id];
 				if (cond[2]) cond[2]--;
@@ -3070,7 +3072,7 @@ class Battle {
 		pokemonid = parsedPokemonid;
 
 		const searchid = `${pokemonid}|${details}`;
-		const side = this.players[siden];
+		const side = this.sides[siden];
 
 		// search inactive revealed pokemon
 		for (let i = 0; i < side.pokemon.length; i++) {
@@ -3102,7 +3104,7 @@ class Battle {
 	rememberTeamPreviewPokemon(sideid: string, details: string) {
 		const {siden} = this.parsePokemonId(sideid);
 
-		return this.players[siden].addPokemon('', '', details);
+		return this.sides[siden].addPokemon('', '', details);
 	}
 	findCorrespondingPokemon(serverPokemon: {ident: string, details: string}) {
 		const {siden} = this.parsePokemonId(serverPokemon.ident);
@@ -3144,7 +3146,7 @@ class Battle {
 		if (sidename === 'p3' || sidename.substr(0, 3) === 'p3:') return this.p3;
 		if (sidename === 'p4' || sidename.substr(0, 3) === 'p4:') return this.p4;
 		let side: Side = this.p1;
-		this.players.forEach(player => {
+		this.sides.forEach(player => {
 			if (player.id === sidename || player.name === sidename) side = player;
 		});
 		return side;
@@ -3462,8 +3464,8 @@ class Battle {
 			this.log(args, kwArgs, preempt);
 			break;
 		}}
-		this.sides[0].updateActives();
-		this.sides[1].updateActives();
+		this.teams[0].updateActives();
+		this.teams[1].updateActives();
 	}
 
 	run(str: string, preempt?: boolean) {

@@ -68,7 +68,7 @@ class ModifiableValue {
 		if (!this.weatherName) return false;
 		if (!weatherName) weatherName = this.weatherName;
 		else if (weatherName !== this.weatherName) return false;
-		for (const side of this.battle.players) {
+		for (const side of this.battle.sides) {
 			for (const active of side.active) {
 				if (active && ['Air Lock', 'Cloud Nine'].includes(active.ability)) {
 					this.comment.push(` (${weatherName} suppressed by ${active.ability})`);
@@ -284,7 +284,7 @@ class BattleTooltips {
 			// mouse over sidebar pokemon
 			// pokemon definitely exists, serverPokemon always ignored
 			let sideIndex = parseInt(args[1], 10);
-			let side = this.battle.players[sideIndex];
+			let side = this.battle.sides[sideIndex];
 			let pokemon = side.pokemon[parseInt(args[2], 10)];
 			if (args[3] === 'illusion') {
 				buf = '';
@@ -305,7 +305,7 @@ class BattleTooltips {
 			// mouse over active pokemon
 			// pokemon definitely exists, serverPokemon maybe
 			let sideIndex = parseInt(args[1], 10);
-			let side = this.battle.players[sideIndex];
+			let side = this.battle.sides[sideIndex];
 			let activeIndex = parseInt(args[2], 10);
 			let pokemon = side.active[activeIndex];
 			let serverPokemon = null;
@@ -319,7 +319,7 @@ class BattleTooltips {
 		case 'switchpokemon': { // switchpokemon|POKEMON
 			// mouse over switchable pokemon
 			// serverPokemon definitely exists, sidePokemon maybe
-			let side = this.battle.players[0];
+			let side = this.battle.sides[0];
 			let activeIndex = parseInt(args[1], 10);
 			let pokemon = null;
 			if (activeIndex < side.active.length) {
@@ -908,7 +908,7 @@ class BattleTooltips {
 		let buf = `<table style="border: 0; border-collapse: collapse; vertical-align: top; padding: 0; width: 100%"><tr>`;
 
 		let atLeastOne = false;
-		for (const side of this.battle.players) {
+		for (const side of this.battle.sides) {
 			const sideConditions = scene.sideConditionsLeft(side, true);
 			if (sideConditions) atLeastOne = true;
 			buf += `<td><p class="section"><strong>${BattleLog.escapeHTML(side.name)}</strong>${sideConditions || "<br />(no conditions)"}</p></td>`;
@@ -1038,7 +1038,7 @@ class BattleTooltips {
 		let weather = this.battle.weather;
 		if (weather) {
 			// Check if anyone has an anti-weather ability
-			outer: for (const side of this.battle.players) {
+			outer: for (const side of this.battle.sides) {
 				for (const active of side.active) {
 					if (active && ['Air Lock', 'Cloud Nine'].includes(active.ability)) {
 						weather = '' as ID;
