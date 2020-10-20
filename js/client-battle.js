@@ -8,7 +8,6 @@
 		maxWidth: 1180,
 		initialize: function (data) {
 			this.me = {};
-
 			this.battlePaused = false;
 
 			this.isSideRoom = Dex.prefs('rightpanelbattles');
@@ -58,6 +57,7 @@
 		battleEnded: false,
 		join: function () {
 			app.send('/join ' + this.id);
+
 		},
 		showChat: function () {
 			this.$('.battle-chat-toggle').attr('name', 'hideChat').html('Battle <i class="fa fa-caret-right"></i>');
