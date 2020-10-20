@@ -579,6 +579,7 @@ class Side {
 	id = '';
 	n: number;
 	foe: Side = null!;
+	ally: Side | null = null;
 	avatar: string = 'unknown';
 	rating: string = '';
 	totalPokemon = 6;
@@ -1050,6 +1051,8 @@ class Battle {
 	yourSide: Side = null!;
 	p1: Side = null!;
 	p2: Side = null!;
+	p3: Side | null = null;
+	p4: Side | null = null;
 	myPokemon: ServerPokemon[] | null = null;
 	sides: [Side, Side] = [null!, null!];
 	lastMove = '';
@@ -1133,6 +1136,15 @@ class Battle {
 		this.sides = [this.mySide, this.yourSide];
 		this.p1 = this.mySide;
 		this.p2 = this.yourSide;
+		if (this.gameType === 'multi') {
+			this.p3 = new Side(this, 2);
+			this.p3.foe = this.p2;
+			this.p3.ally = this.p1;
+			this.p4 = new Side(this, 3);
+			this.p4.ally = this.p2;
+			this.p4.foe = this.p1;
+			this.sides.push(this.p3, this.p4);
+		}
 		this.gen = 7;
 		this.reset();
 	}
@@ -2983,7 +2995,7 @@ class Battle {
 			let pokemon = side.pokemon[i];
 			if (pokemon.fainted) continue;
 			// already active, can't be switching in
-			if (side.active.includes(pokemon)) continue;
+			if (side.active.includes(pokemon) && !side.ally) continue;
 			// just switched out, can't be switching in
 			if (pokemon === side.lastPokemon && !side.active[slot]) continue;
 
