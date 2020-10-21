@@ -695,7 +695,7 @@ class BattleScene {
 		const $sidebar = (side.n ? this.$rightbar : this.$leftbar);
 		if (side.name) {
 			const ratinghtml = side.rating ? ` title="Rating: ${BattleLog.escapeHTML(side.rating)}"` : ``;
-			$sidebar.html(`<div class="trainer"><strong>${BattleLog.escapeHTML(side.name)}</strong><div class="trainersprite"${ratinghtml} style="background-image:url(${Dex.resolveAvatar(side.avatar)})"></div>${pokemonhtml}</div>`);
+			$sidebar.html(`<div class="trainer${side.n > 2 ? `id="p${side.n + 1}"`: ""}"><strong>${BattleLog.escapeHTML(side.name)}</strong><div class="trainersprite"${ratinghtml} style="background-image:url(${Dex.resolveAvatar(side.avatar)})"></div>${pokemonhtml}</div>`);
 			$sidebar.find('.trainer').css('opacity', 1);
 		} else {
 			$sidebar.find('.trainer').css('opacity', 0.4);
@@ -713,14 +713,14 @@ class BattleScene {
 	}
 
 	teamPreviewEnd() {
-		for (let siden = 0; siden < 2; siden++) {
+		for (let siden = 0; siden < 2 || (this.battle.gameType === 'multi' && siden < 4); siden++) {
 			this.$sprites[siden].empty();
 			this.battle.sides[siden].updateSprites();
 		}
 	}
 	teamPreview() {
 		let newBGNum = 0;
-		for (let siden = 0; siden < 2; siden++) {
+		for (let siden = 0; siden < 2 || (this.battle.gameType === 'multi' && siden < 4); siden++) {
 			let side = this.battle.sides[siden];
 			let textBuf = '';
 			let buf = '';
