@@ -3146,6 +3146,12 @@ class Battle {
 		case 'turn': {
 			this.setTurn(args[1]);
 			this.log(args);
+			if (this.gameType === 'multi') {
+				this.mySide.active[this.mySide.pokemon[0].slot ^ 1] = this.mySide.ally.active[this.mySide.ally.pokemon[0].slot];
+				this.mySide.ally.active = Object.assign([], this.mySide.active);
+				this.yourSide.active[this.yourSide.pokemon[0].slot ^ 1] = this.yourSide.ally.active[this.yourSide.ally.pokemon[0].slot];
+				this.yourSide.ally.active = Object.assign([], this.yourSide.active);
+			}
 			break;
 		}
 		case 'tier': {
@@ -3338,12 +3344,6 @@ class Battle {
 				poke.side.replace(poke);
 			} else {
 				poke.side.dragIn(poke);
-			}
-			if (this.gameType === 'multi') {
-				this.mySide.active[this.mySide.pokemon[0].slot ^ 1] = this.mySide.ally.active[this.mySide.ally.pokemon[0].slot];
-				this.mySide.ally.active = Object.assign([], this.mySide.active);
-				this.yourSide.active[this.yourSide.pokemon[0].slot ^ 1] = this.yourSide.ally.active[this.yourSide.ally.pokemon[0].slot];
-				this.yourSide.ally.active = Object.assign([], this.yourSide.active);
 			}
 			this.log(args, kwArgs);
 			break;
