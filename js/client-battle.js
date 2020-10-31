@@ -385,7 +385,7 @@
 
                         if (this.request.forceSwitch !== true) {
                             var faintedLength = _.filter(this.request.forceSwitch, function(fainted) { return fainted; }).length;
-                            var freedomDegrees = faintedLength - _.filter(switchables.slice(this.battle.mySide.pokemon.length - (this.battle.gameType === 'multi' ? 1 : 0)), function(mon) { return !mon.fainted || mon.side !== this.battle.mySide.ally; }).length;
+                            var freedomDegrees = faintedLength - _.filter(switchables.slice(this.battle.mySide.active.length - (this.battle.gameType === 'multi' ? 1 : 0)), function(mon) { return !mon.fainted || mon.side !== this.battle.mySide.ally; }).length;
                             this.choice.freedomDegrees = Math.max(freedomDegrees, 0);
                             this.choice.canSwitch = faintedLength - this.choice.freedomDegrees;
                         }

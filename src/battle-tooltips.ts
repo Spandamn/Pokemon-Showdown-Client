@@ -302,34 +302,33 @@ class BattleTooltips {
 			break;
 		}
 		case 'activepokemon': { // activepokemon|SIDE|ACTIVE
-			// mouse over active pokemon
-			// pokemon definitely exists, serverPokemon maybe
- 			let sideIndex = parseInt(args[1], 10);
-			let activeIndex = parseInt(args[2], 10);
-			if (this.battle.gameType === 'multi') {
-				let side = sideIndex === 0 ? this.battle.mySide : this.battle.yourSide;
-				if (activeIndex > side.active.length) break;
-				side = activeIndex === this.battle.mySide.pokemon[0].slot ? side : side.ally;
-				let pokemon = side.pokemon[0];
+				// mouse over active pokemon
+				// pokemon definitely exists, serverPokemon maybe
+				 let sideIndex = parseInt(args[1], 10);
+				let activeIndex = parseInt(args[2], 10);
+				if (this.battle.gameType === 'multi') {
+					let side = sideIndex === 0 ? this.battle.mySide : this.battle.yourSide;
+					side = side.active[activeIndex].side;
+					let pokemon = side.active[activeIndex];
+					let serverPokemon = null;
+					if (side === this.battle.mySide) {
+						serverPokemon = this.battle.myPokemon[0];
+					} else if (side === this.battle.mySide.ally) {
+						serverPokemon = this.battle.mySide.ally.myPokemon[0];
+					}
+					if (!pokemon) return false;
+					buf = this.showPokemonTooltip(pokemon, serverPokemon, true);
+					break;
+				}
+				let side = this.battle.sides[sideIndex];
+				let pokemon = side.active[activeIndex];
 				let serverPokemon = null;
-				if (side === this.battle.mySide) {
-					serverPokemon = this.battle.myPokemon[0];
-				} else if (side === this.battle.mySide.ally) {
-					serverPokemon = this.battle.mySide.ally.myPokemon[0];
+				if (sideIndex === 0 && this.battle.myPokemon) {
+					serverPokemon = this.battle.myPokemon[activeIndex];
 				}
 				if (!pokemon) return false;
 				buf = this.showPokemonTooltip(pokemon, serverPokemon, true);
 				break;
-			}
-			let side = this.battle.sides[sideIndex];
-			let pokemon = side.active[activeIndex];
-			let serverPokemon = null;
-			if (sideIndex === 0 && this.battle.myPokemon) {
-				serverPokemon = this.battle.myPokemon[activeIndex];
-			}
-			if (!pokemon) return false;
-			buf = this.showPokemonTooltip(pokemon, serverPokemon, true);
-			break;
 		}
 		case 'switchpokemon': { // switchpokemon|POKEMON
 			// mouse over switchable pokemon
