@@ -272,10 +272,10 @@ class BattleTooltips {
 		case 'maxmove': { // move|MOVE|ACTIVEPOKEMON|[GMAXMOVE]
 			let move = this.battle.dex.getMove(args[1]);
 			let index = parseInt(args[2], 10);
-			let pokemon = this.battle.mySide.active[index];
+			let pokemon = this.battle.nearSide.active[index];
 			let gmaxMove = args[3] ? this.battle.dex.getMove(args[3]) : undefined;
 			if (!pokemon) return false;
-			let serverPokemon = pokemon.side === this.battle.mySide.ally ? this.battle.mySide.ally.myPokemon![index] : this.battle.myPokemon![index];
+			let serverPokemon = pokemon.side === this.battle.nearSide.ally ? this.battle.nearSide.ally.myPokemon![index] : this.battle.myPokemon![index];
 			buf = this.showMoveTooltip(move, type, pokemon, serverPokemon, gmaxMove);
 			break;
 		}
@@ -306,7 +306,7 @@ class BattleTooltips {
 			// pokemon definitely exists, serverPokemon maybe
 			let sideIndex = parseInt(args[1], 10);
 			let activeIndex = parseInt(args[2], 10);
-			let side = sideIndex ? this.battle.yourSide : this.battle.mySide;
+			let side = sideIndex ? this.battle.farSide : this.battle.nearSide;
 			if (this.battle.gameType === 'multi') {
 				if (activeIndex >= side.active.length) return;
 				if (activeIndex && side.sideid !== 'p3' && side.sideid !== 'p4') side = side.ally;
@@ -314,10 +314,10 @@ class BattleTooltips {
 				let pokemon = side.active[activeIndex];
 				if (!pokemon) return;
 				let serverPokemon = null;
-				if (side === this.battle.mySide && this.battle.myPokemon) {
+				if (side === this.battle.nearSide && this.battle.myPokemon) {
 					serverPokemon = this.battle.myPokemon[0];
-				} else if (side === this.battle.mySide.ally && this.battle.mySide.ally.myPokemon) {
-					serverPokemon = this.battle.mySide.ally.myPokemon[0];
+				} else if (side === this.battle.nearSide.ally && this.battle.nearSide.ally.myPokemon) {
+					serverPokemon = this.battle.nearSide.ally.myPokemon[0];
 				}
 				if (!pokemon) return false;
 				buf = this.showPokemonTooltip(pokemon, serverPokemon, true);
@@ -355,7 +355,7 @@ class BattleTooltips {
 			/*if (activeIndex < side.pokemon.length) {
 				pokemon = side.pokemon[activeIndex] || side.ally ? side.ally.pokemon[activeIndex] : null;
 			}*/
-			let serverPokemon = this.battle.mySide.ally.myPokemon ? this.battle.mySide.ally.myPokemon[activeIndex] : null;
+			let serverPokemon = this.battle.nearSide.ally.myPokemon ? this.battle.nearSide.ally.myPokemon[activeIndex] : null;
 			buf = this.showPokemonTooltip(pokemon, serverPokemon);
 			break;
 		}
@@ -529,11 +529,11 @@ class BattleTooltips {
 		// TODO: move this somewhere it makes more sense
 		if (pokemon.ability === '(suppressed)') serverPokemon.ability = '(suppressed)';
 		let ability = toID(serverPokemon.ability || pokemon.ability || serverPokemon.baseAbility);
+		let item = this.battle.dex.getItem(serverPokemon.item);
 
 		let value = new ModifiableValue(this.battle, pokemon, serverPokemon);
 
 		if (isZOrMax === 'zmove') {
-			let item = this.battle.dex.getItem(serverPokemon.item);
 			if (item.zMoveFrom === move.name) {
 				move = this.battle.dex.getMove(item.zMove as string);
 			} else if (move.category === 'Status') {
@@ -586,7 +586,6 @@ class BattleTooltips {
 					maxMove = this.battle.dex.getMove(BattleTooltips.maxMoveTable['Dark']);
 				}
 				if (move.id === 'weatherball') {
-					const item = this.battle.dex.getItem(pokemon.item);
 					switch (this.battle.weather) {
 					case 'sunnyday':
 					case 'desolateland':
@@ -616,6 +615,12 @@ class BattleTooltips {
 					} else if (this.battle.hasPseudoWeather('Psychic Terrain')) {
 						maxMove = this.battle.dex.getMove(BattleTooltips.maxMoveTable['Psychic']);
 					}
+				}
+				if (move.id === 'multiattack' && item.onMemory) {
+					maxMove = this.battle.dex.getMove(BattleTooltips.maxMoveTable[item.onMemory]);
+				}
+				if (move.id === 'technoblast' && item.onDrive) {
+					maxMove = this.battle.dex.getMove(BattleTooltips.maxMoveTable[item.onDrive]);
 				}
 				const basePower = ['gmaxdrumsolo', 'gmaxfireball', 'gmaxhydrosnipe'].includes(maxMove.id) ?
 					maxMove.basePower : move.maxMove.basePower;
@@ -707,7 +712,7 @@ class BattleTooltips {
 			} else if (move.priority === 1) {
 				text += 'Usually moves first <em>(priority +' + move.priority + ')</em>.</p><p>';
 			} else {
-				if (move.id === 'grassyglide' && this.battle.hasPseudoWeather('Grassy Terrrain')) {
+				if (move.id === 'grassyglide' && this.battle.hasPseudoWeather('Grassy Terrain')) {
 					text += 'Usually moves first <em>(priority +1)</em>.</p><p>';
 				}
 			}
@@ -845,7 +850,7 @@ class BattleTooltips {
 					if (pokemon.ability === 'Poison Heal' || pokemon.ability === 'Magic Guard') {
 						text += ' <small>Would take if ability removed: ' + Math.floor(100 / 16 * Math.min(clientPokemon.statusData.toxicTurns + 1, 15)) + '%</small>';
 					} else {
-						text += ' Next damage: ' + Math.floor(100 / 16 * Math.min(clientPokemon.statusData.toxicTurns + 1, 15)) + '%';
+						text += ' Next damage: ' + Math.floor(100 / (clientPokemon.volatiles['dynamax'] ? 32 : 16) * Math.min(clientPokemon.statusData.toxicTurns + 1, 15)) + '%';
 					}
 				} else if (pokemon.status === 'slp') {
 					text += ' Turns asleep: ' + clientPokemon.statusData.sleepTurns;
@@ -864,8 +869,17 @@ class BattleTooltips {
 		}
 
 		let itemText = '';
-		if (serverPokemon?.item) {
-			itemText = '<small>Item:</small> ' + Dex.getItem(serverPokemon.item).name;
+		if (serverPokemon) {
+			let item = '';
+			let itemEffect = '';
+			if (clientPokemon?.prevItem) {
+				item = 'None';
+				let prevItem = Dex.getItem(clientPokemon.prevItem).name;
+				itemEffect += clientPokemon.prevItemEffect ? prevItem + ' was ' + clientPokemon.prevItemEffect : 'was ' + prevItem;
+			}
+			if (serverPokemon.item) item = Dex.getItem(serverPokemon.item).name;
+			if (itemEffect) itemEffect = ' (' + itemEffect + ')';
+			if (item) itemText = '<small>Item:</small> ' + item + itemEffect;
 		} else if (clientPokemon) {
 			let item = '';
 			let itemEffect = clientPokemon.itemEffect || '';
@@ -1308,7 +1322,7 @@ class BattleTooltips {
 		// can happen in obscure situations
 		if (!value.pokemon) return [moveType, category];
 
-		let pokemonTypes = value.pokemon!.getTypeList(value.serverPokemon);
+		let pokemonTypes = value.pokemon.getTypeList(value.serverPokemon);
 		value.reset();
 		if (move.id === 'revelationdance') {
 			moveType = pokemonTypes[0];
